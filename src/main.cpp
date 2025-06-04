@@ -13,7 +13,11 @@
 #include <MenuScreen.h>
 #include <display/LiquidCrystal_I2CAdapter.h>
 #include <renderer/CharacterDisplayRenderer.h>
-
+#include <ItemWidget.h>
+#include <widget/WidgetBool.h>
+#include <widget/WidgetList.h>
+#include <widget/WidgetRange.h>
+#include <ItemValue.h>
 
 #define ROTARY_ENCODER_DT_PIN 27
 #define ROTARY_ENCODER_CLK_PIN 26
@@ -24,12 +28,14 @@
 SimpleRotary encoder(ROTARY_ENCODER_DT_PIN, ROTARY_ENCODER_CLK_PIN, ROTARY_ENCODER_BUTTON_PIN);
 
 LiquidCrystal_I2C lcd(0x27, 16, 2);
-//RTC_DS1307 rtc;
+RTC_DS1307 rtc;
 
 MENU_SCREEN(settingsScreen, settingsItems,
-    ITEM_BASIC("Backlight"),
-    ITEM_BASIC("Contrast"),
-    ITEM_BASIC("Contrast1"),
+    ITEM_WIDGET(
+        "Backlight",
+        [](bool backlight) { lcd.setBacklight(backlight); },
+        WIDGET_BOOL(true, "  On", " Off", "%s")),
+    ITEM_VALUE("RTC", rtc_running, "%i"),
     ITEM_BASIC("Contrast2"));
 
 
@@ -37,8 +43,6 @@ MENU_SCREEN(settingsScreen, settingsItems,
 MENU_SCREEN(mainScreen, mainItems,
     ITEM_BASIC("Dashboard"),
     ITEM_SUBMENU("Settings", settingsScreen),
-    ITEM_BASIC("lol"),
-    ITEM_BASIC("Settings"),
     ITEM_BASIC("Test 1"),
     ITEM_BASIC("Test 2"),
     ITEM_BASIC("Test 3"),
@@ -64,7 +68,8 @@ void printl(char* string, int x, int y)
 void setup()
 {
     Serial.begin(9600);
-//    rtc.begin();
+
+    rtc.begin()
 
     renderer.begin();
     menu.setScreen(mainScreen);
@@ -86,4 +91,5 @@ void setup()
 void loop()
 {
     encoderA.observe();
+    //LcdMenu::poll();
 }
