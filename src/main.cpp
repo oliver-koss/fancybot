@@ -1,23 +1,59 @@
 #include "Arduino.h"
 
-#include "AiEsp32RotaryEncoder.h"
-#include <LiquidCrystal_I2C.h>
+//#include "AiEsp32RotaryEncoder.h"
+//#include <LiquidCrystal_I2C.h>
 //#include <TinyGPSPlus.h>
 #include <RTClib.h>
+
+#include <SimpleRotary.h>
+#include <input/SimpleRotaryAdapter.h>
+
+#include <ItemSubMenu.h>
+#include <LcdMenu.h>
+#include <MenuScreen.h>
+#include <display/LiquidCrystal_I2CAdapter.h>
+#include <renderer/CharacterDisplayRenderer.h>
+
 
 #define ROTARY_ENCODER_DT_PIN 27
 #define ROTARY_ENCODER_CLK_PIN 26
 #define ROTARY_ENCODER_BUTTON_PIN 14
 #define ROTARY_ENCODER_STEPS 4
 
-AiEsp32RotaryEncoder rotaryEncoder = AiEsp32RotaryEncoder(ROTARY_ENCODER_DT_PIN, ROTARY_ENCODER_CLK_PIN, ROTARY_ENCODER_BUTTON_PIN, -1, ROTARY_ENCODER_STEPS);
-LiquidCrystal_I2C lcd(0x27, 16, 2);
-RTC_DS1307 rtc;
+//AiEsp32RotaryEncoder rotaryEncoder = AiEsp32RotaryEncoder(ROTARY_ENCODER_DT_PIN, ROTARY_ENCODER_CLK_PIN, ROTARY_ENCODER_BUTTON_PIN, -1, ROTARY_ENCODER_STEPS);
+SimpleRotary encoder(ROTARY_ENCODER_DT_PIN, ROTARY_ENCODER_CLK_PIN, ROTARY_ENCODER_BUTTON_PIN);
 
-void IRAM_ATTR readEncoderISR()
-{
-	rotaryEncoder.readEncoder_ISR();
-}
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+//RTC_DS1307 rtc;
+
+MENU_SCREEN(settingsScreen, settingsItems,
+    ITEM_BASIC("Backlight"),
+    ITEM_BASIC("Contrast"),
+    ITEM_BASIC("Contrast1"),
+    ITEM_BASIC("Contrast2"));
+
+
+
+MENU_SCREEN(mainScreen, mainItems,
+    ITEM_BASIC("Dashboard"),
+    ITEM_SUBMENU("Settings", settingsScreen),
+    ITEM_BASIC("lol"),
+    ITEM_BASIC("Settings"),
+    ITEM_BASIC("Test 1"),
+    ITEM_BASIC("Test 2"),
+    ITEM_BASIC("Test 3"),
+    ITEM_BASIC("Test 4"),
+    ITEM_BASIC("Test 5"),
+    ITEM_BASIC("Test 6"),
+    ITEM_BASIC("Test 7"));
+
+
+
+LiquidCrystal_I2CAdapter lcdAdapter(&lcd);
+CharacterDisplayRenderer renderer(&lcdAdapter, 16, 2);
+LcdMenu menu(renderer);
+SimpleRotaryAdapter encoderA(&menu, &encoder);
+
 
 void printl(char* string, int x, int y)
 {
@@ -25,48 +61,29 @@ void printl(char* string, int x, int y)
     lcd.print(string);
 }
 
-
-void rotary_onButtonClick()
-{
-	static unsigned long lastTimePressed = 0;
-	//ignore multiple press in that time milliseconds
-	if (millis() - lastTimePressed < 500)
-	{
-		return;
-	}
-	lastTimePressed = millis();
-	Serial.print("button pressed ");
-	Serial.print(millis());
-	Serial.println(" milliseconds after restart");
-}
-
 void setup()
 {
     Serial.begin(9600);
-    rtc.begin();
+//    rtc.begin();
 
+    renderer.begin();
+    menu.setScreen(mainScreen);
+
+/*    
     rotaryEncoder.begin();
 	rotaryEncoder.setup(readEncoderISR);
-    rotaryEncoder.setBoundaries(0, 20, true);
+    rotaryEncoder.setBoundaries(0, 8, true);
     rotaryEncoder.disableAcceleration();
+*/
 
     lcd.init();
     lcd.backlight();
 
-    printl("FancyBot", 0, 0);
-    printl("Version 0.0.1", 0, 1);
+//    printl("FancyBot", 0, 0);
+//    printl("Version 0.0.1", 0, 1);
 }
 
 void loop()
 {
-	//dont print anything unless value changed
-	if (rotaryEncoder.encoderChanged())
-	{
-		Serial.print("Value: ");
-		Serial.println(rotaryEncoder.readEncoder());
-	}
-	if (rotaryEncoder.isEncoderButtonClicked())
-	{
-		rotary_onButtonClick();
-	}
+    encoderA.observe();
 }
