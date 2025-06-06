@@ -35,7 +35,7 @@ MENU_SCREEN(settingsScreen, settingsItems,
         "Backlight",
         [](bool backlight) { lcd.setBacklight(backlight); },
         WIDGET_BOOL(true, "  On", " Off", "%s")),
-    ITEM_VALUE("RTC", rtc_running, "%i"),
+//    ITEM_VALUE("RTC", rtc_running, "%i"),
     ITEM_BASIC("Contrast2"));
 
 
@@ -65,11 +65,25 @@ void printl(char* string, int x, int y)
     lcd.print(string);
 }
 
+void taskOne( void * parameter )
+{
+ 
+    while(true){
+ 
+        Serial.println("Hello from task 1");
+        delay(1000);
+    }
+ 
+    Serial.println("Ending task 1");
+    vTaskDelete( NULL );
+ 
+}
+
 void setup()
 {
     Serial.begin(9600);
 
-    rtc.begin()
+    rtc.begin();
 
     renderer.begin();
     menu.setScreen(mainScreen);
@@ -86,7 +100,17 @@ void setup()
 
 //    printl("FancyBot", 0, 0);
 //    printl("Version 0.0.1", 0, 1);
+
+  xTaskCreate(
+                    taskOne,          /* Task function. */
+                    "TaskOne",        /* String with name of task. */
+                    10000,            /* Stack size in bytes. */
+                    NULL,             /* Parameter passed as input of the task */
+                    1,                /* Priority of the task. */
+                    NULL);            /* Task handle. */
+
 }
+
 
 void loop()
 {
