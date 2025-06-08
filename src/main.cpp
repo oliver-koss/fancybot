@@ -5,6 +5,10 @@
 //#include <TinyGPSPlus.h>
 #include <RTClib.h>
 
+#include <Wire.h>
+#include <Adafruit_Sensor.h> 
+#include <Adafruit_ADXL345_U.h>
+
 #include <SimpleRotary.h>
 #include <input/SimpleRotaryAdapter.h>
 
@@ -30,6 +34,17 @@ SimpleRotary encoder(ROTARY_ENCODER_DT_PIN, ROTARY_ENCODER_CLK_PIN, ROTARY_ENCOD
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 //RTC_DS1307 rtc;
 
+Adafruit_ADXL345_Unified accel = Adafruit_ADXL345_Unified();
+sensors_event_t event;
+
+int test = 1;
+
+MENU_SCREEN(Dashboard, DashboardItems,
+    ITEM_VALUE("Test: ", test, "%i"),
+    ITEM_VALUE("X: ", event.acceleration.x, "%f"),
+    ITEM_VALUE("Y: ", event.acceleration.y, "%f"),
+    ITEM_VALUE("Z: ", event.acceleration.z, "%f"));
+
 MENU_SCREEN(settingsScreen, settingsItems,
     ITEM_WIDGET(
         "Backlight",
@@ -41,7 +56,7 @@ MENU_SCREEN(settingsScreen, settingsItems,
 
 
 MENU_SCREEN(mainScreen, mainItems,
-    ITEM_BASIC("Dashboard"),
+    ITEM_SUBMENU("Dashboard", Dashboard),
     ITEM_SUBMENU("Settings", settingsScreen),
     ITEM_BASIC("Test 1"),
     ITEM_BASIC("Test 2"),
@@ -70,8 +85,9 @@ void taskOne( void * parameter )
  
     while(true){
  
-        Serial.println(esp_timer_get_time());
-//        delay(1000);
+//        Serial.println(esp_timer_get_time());
+        test++;
+        delay(1000);
     }
  
 }
@@ -81,9 +97,19 @@ void taskTwo( void * parameter)
  
     while(true){
  
-        Serial.println("Hello from task 2");
+        accel.getEvent(&event);
+        Serial.print("X: "); Serial.print(event.acceleration.x); Serial.print("  ");
+        Serial.print("Y: "); Serial.print(event.acceleration.y); Serial.print("  ");
+        Serial.print("Z: "); Serial.print(event.acceleration.z); Serial.print("  ");
+        Serial.println("m/s^2 ");
+        delay(500);
     }
 
+}
+
+void adxl345(sensors_event_t* event)
+{
+//    accel.getEvent(&event);
 }
 
 void setup()
@@ -105,6 +131,15 @@ void setup()
     printl("FancyBot", 0, 0);
     printl("Version 0.0.1", 0, 1);
 
+
+    accel.begin();
+/*
+    if (accel.begin())
+    {
+        xTaskCreate(adxl345, "adxl345", 10000, &event, 1, NULL); 
+    }
+*/
+
   xTaskCreate(
                     taskOne,          /* Task function. */
                     "TaskOne",        /* String with name of task. */
@@ -113,18 +148,18 @@ void setup()
                     1,                /* Priority of the task. */
                     NULL);            /* Task handle. */
 
-//  xTaskCreate(
-//                    taskTwo,          /* Task function. */
-//                    "TaskTwo",        /* String with name of task. */
-//                    10000,            /* Stack size in bytes. */
-//                    NULL,             /* Parameter passed as input of the task */
-//                    2,                /* Priority of the task. */
-//                    NULL);            /* Task handle. */
+  xTaskCreate(
+                    taskTwo,          /* Task function. */
+                    "TaskTwo",        /* String with name of task. */
+                    10000,            /* Stack size in bytes. */
+                    NULL,             /* Parameter passed as input of the task */
+                    1,                /* Priority of the task. */
+                    NULL);            /* Task handle. */
 
 
     renderer.begin();
     delay(1000);
-    menu.setScreen(mainScreen);
+    menu.setScreen(Dashboard);
                     
 }
 
@@ -132,5 +167,5 @@ void setup()
 void loop()
 {
     encoderA.observe();
-    //LcdMenu::poll();
+    menu.poll();
 }
