@@ -9,6 +9,10 @@
 #include <Adafruit_Sensor.h> 
 #include <Adafruit_ADXL345_U.h>
 
+#include "FS.h"
+#include "SD.h"
+#include "SPI.h"
+
 #include <SimpleRotary.h>
 #include <input/SimpleRotaryAdapter.h>
 
@@ -124,6 +128,34 @@ void setup()
     rotaryEncoder.setBoundaries(0, 8, true);
     rotaryEncoder.disableAcceleration();
 */
+
+    delay(2000);
+    if(!SD.begin(5)){
+        Serial.println("Cannot mount SD Card!");
+    }
+
+    uint8_t cardType = SD.cardType();
+
+    Serial.print("SD Card Type: ");
+    if(cardType == CARD_MMC){
+        Serial.println("MMC");
+    } else if(cardType == CARD_SD){
+        Serial.println("SDSC");
+    } else if(cardType == CARD_SDHC){
+        Serial.println("SDHC");
+    } else {
+        Serial.println("UNKNOWN");
+    }
+
+/*    
+    File file = SD.open("/");
+    if(!file){
+        Serial.println("Failed to open file for writing");
+        return;
+    }
+*/
+
+    SD.mkdir("/lol");
 
     lcd.init();
     lcd.backlight();
