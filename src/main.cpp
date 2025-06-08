@@ -43,11 +43,6 @@ sensors_event_t event;
 
 int test = 1;
 
-MENU_SCREEN(Dashboard, DashboardItems,
-    ITEM_VALUE("Test: ", test, "%i"),
-    ITEM_VALUE("X: ", event.acceleration.x, "%f"),
-    ITEM_VALUE("Y: ", event.acceleration.y, "%f"),
-    ITEM_VALUE("Z: ", event.acceleration.z, "%f"));
 
 MENU_SCREEN(settingsScreen, settingsItems,
     ITEM_WIDGET(
@@ -57,19 +52,12 @@ MENU_SCREEN(settingsScreen, settingsItems,
 //    ITEM_VALUE("RTC", rtc_running, "%i"),
     ITEM_BASIC("Contrast2"));
 
-
-
-MENU_SCREEN(mainScreen, mainItems,
-    ITEM_SUBMENU("Dashboard", Dashboard),
-    ITEM_SUBMENU("Settings", settingsScreen),
-    ITEM_BASIC("Test 1"),
-    ITEM_BASIC("Test 2"),
-    ITEM_BASIC("Test 3"),
-    ITEM_BASIC("Test 4"),
-    ITEM_BASIC("Test 5"),
-    ITEM_BASIC("Test 6"),
-    ITEM_BASIC("Test 7"));
-
+MENU_SCREEN(Dashboard, DashboardItems,
+    ITEM_VALUE("Test: ", test, "%i"),
+    ITEM_VALUE("X: ", event.acceleration.x, "%f"),
+    ITEM_VALUE("Y: ", event.acceleration.y, "%f"),
+    ITEM_VALUE("Z: ", event.acceleration.z, "%f"),
+    ITEM_SUBMENU("Settings", settingsScreen));
 
 
 LiquidCrystal_I2CAdapter lcdAdapter(&lcd);
