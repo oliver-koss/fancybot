@@ -28,7 +28,7 @@
 SimpleRotary encoder(ROTARY_ENCODER_DT_PIN, ROTARY_ENCODER_CLK_PIN, ROTARY_ENCODER_BUTTON_PIN);
 
 LiquidCrystal_I2C lcd(0x27, 16, 2);
-RTC_DS1307 rtc;
+//RTC_DS1307 rtc;
 
 MENU_SCREEN(settingsScreen, settingsItems,
     ITEM_WIDGET(
@@ -70,23 +70,27 @@ void taskOne( void * parameter )
  
     while(true){
  
-        Serial.println("Hello from task 1");
-        delay(1000);
+        Serial.println(esp_timer_get_time());
+//        delay(1000);
     }
  
-    Serial.println("Ending task 1");
-    vTaskDelete( NULL );
+}
+
+void taskTwo( void * parameter)
+{
  
+    while(true){
+ 
+        Serial.println("Hello from task 2");
+    }
+
 }
 
 void setup()
 {
     Serial.begin(9600);
 
-    rtc.begin();
-
-    renderer.begin();
-    menu.setScreen(mainScreen);
+//    rtc.begin();
 
 /*    
     rotaryEncoder.begin();
@@ -98,8 +102,8 @@ void setup()
     lcd.init();
     lcd.backlight();
 
-//    printl("FancyBot", 0, 0);
-//    printl("Version 0.0.1", 0, 1);
+    printl("FancyBot", 0, 0);
+    printl("Version 0.0.1", 0, 1);
 
   xTaskCreate(
                     taskOne,          /* Task function. */
@@ -109,6 +113,19 @@ void setup()
                     1,                /* Priority of the task. */
                     NULL);            /* Task handle. */
 
+//  xTaskCreate(
+//                    taskTwo,          /* Task function. */
+//                    "TaskTwo",        /* String with name of task. */
+//                    10000,            /* Stack size in bytes. */
+//                    NULL,             /* Parameter passed as input of the task */
+//                    2,                /* Priority of the task. */
+//                    NULL);            /* Task handle. */
+
+
+    renderer.begin();
+    delay(1000);
+    menu.setScreen(mainScreen);
+                    
 }
 
 
