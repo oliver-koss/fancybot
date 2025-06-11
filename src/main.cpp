@@ -34,16 +34,20 @@
 #define ROTARY_ENCODER_BUTTON_PIN 14
 #define ROTARY_ENCODER_STEPS 4
 
-//AiEsp32RotaryEncoder rotaryEncoder = AiEsp32RotaryEncoder(ROTARY_ENCODER_DT_PIN, ROTARY_ENCODER_CLK_PIN, ROTARY_ENCODER_BUTTON_PIN, -1, ROTARY_ENCODER_STEPS);
 SimpleRotary encoder(ROTARY_ENCODER_DT_PIN, ROTARY_ENCODER_CLK_PIN, ROTARY_ENCODER_BUTTON_PIN);
 
-LiquidCrystal_I2C lcd(0x27, 16, 2);
-//RTC_DS1307 rtc;
 
 Adafruit_ADXL345_Unified accel = Adafruit_ADXL345_Unified();
 sensors_event_t event;
 
 int test = 1;
+
+
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+LiquidCrystal_I2CAdapter lcdAdapter(&lcd);
+CharacterDisplayRenderer renderer(&lcdAdapter, 16, 2);
+LcdMenu menu(renderer);
+SimpleRotaryAdapter encoderA(&menu, &encoder);
 
 
 MENU_SCREEN(settingsScreen, settingsItems,
@@ -62,10 +66,11 @@ MENU_SCREEN(Dashboard, DashboardItems,
     ITEM_SUBMENU("Settings", settingsScreen));
 
 
-LiquidCrystal_I2CAdapter lcdAdapter(&lcd);
-CharacterDisplayRenderer renderer(&lcdAdapter, 16, 2);
-LcdMenu menu(renderer);
-SimpleRotaryAdapter encoderA(&menu, &encoder);
+bool gps_enabled = false;
+bool adxl345_enabled = false;
+bool logging_enabled = false;
+bool rtc_enabled = false;
+bool display_enabled = false;
 
 
 void printl(char* string, int x, int y)
@@ -73,6 +78,7 @@ void printl(char* string, int x, int y)
     lcd.setCursor(x, y);
     lcd.print(string);
 }
+
 
 void taskOne( void * parameter )
 {
@@ -86,26 +92,16 @@ void taskOne( void * parameter )
  
 }
 
-void RP_calculate(){
-  double x_Buff = event.acceleration.x;
-  double y_Buff = event.acceleration.y;
-  double z_Buff = event.acceleration.z;
-  double roll = atan2(y_Buff , z_Buff) * 57.3;
-  double pitch = atan2((- x_Buff) , sqrt(y_Buff * y_Buff + z_Buff * z_Buff)) * 57.3;
-  printf("Roll: %f, Pitch: %f\n", roll, pitch);
-}
-
 void taskTwo( void * parameter)
 {
  
     while(true){
  
         accel.getEvent(&event);
-        //Serial.print("X: "); Serial.print(event.acceleration.x); Serial.print("  ");
-        //Serial.print("Y: "); Serial.print(event.acceleration.y); Serial.print("  ");
-        //Serial.print("Z: "); Serial.print(event.acceleration.z); Serial.print("  ");
-        //Serial.println("m/s^2 ");
-        RP_calculate();
+        Serial.print("X: "); Serial.print(event.acceleration.x); Serial.print("  ");
+        Serial.print("Y: "); Serial.print(event.acceleration.y); Serial.print("  ");
+        Serial.print("Z: "); Serial.print(event.acceleration.z); Serial.print("  ");
+        Serial.println("m/s^2 ");
         delay(500);
     }
 
@@ -126,21 +122,13 @@ void setup()
     Serial.begin(9600);
 
 
-//    rtc.begin();
-
-/*    
-    rotaryEncoder.begin();
-	rotaryEncoder.setup(readEncoderISR);
-    rotaryEncoder.setBoundaries(0, 8, true);
-    rotaryEncoder.disableAcceleration();
-*/
-
     delay(2000);
     if(!SD.begin(5)){
         Serial.println("Cannot mount SD Card!");
+    } else {
+        Serial.println("SD Card mounted.");
+        logging_enabled = true;
     }
-
-    JsonDocument doc;
 
 /*    
     File file = SD.open("/");
@@ -151,20 +139,25 @@ void setup()
 */
 
 
-    lcd.init();
-    lcd.backlight();
+    if (display_enabled)
+    {
+        renderer.begin();
+        menu.setScreen(Dashboard);
 
-    printl("FancyBot", 0, 0);
-    printl("Version 0.0.1", 0, 1);
+        lcd.init();
+        lcd.backlight();
+
+        printl("FancyBot", 0, 0);
+        printl("Version 0.0.1", 0, 1);
+    }
 
 
-    accel.begin();
-/*
+
     if (accel.begin())
     {
-        xTaskCreate(adxl345, "adxl345", 10000, &event, 1, NULL); 
+        adxl345_enabled = true;
+//        xTaskCreate(adxl345, "adxl345", 10000, &event, 1, NULL);
     }
-*/
 
   xTaskCreate(
                     taskOne,          /* Task function. */
@@ -182,16 +175,18 @@ void setup()
                     1,                /* Priority of the task. */
                     NULL);            /* Task handle. */
 
-
-    renderer.begin();
-    delay(1000);
-    menu.setScreen(Dashboard);
                     
 }
 
 
 void loop()
 {
-    encoderA.observe();
-    menu.poll();
+    if (display_enabled)
+    {
+        encoderA.observe();
+        menu.poll();
+    }
+
+    Serial.println("lul");
+    delay(1000);
 }
