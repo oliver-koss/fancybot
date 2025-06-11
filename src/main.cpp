@@ -13,6 +13,8 @@
 #include "SD.h"
 #include "SPI.h"
 
+#include <ArduinoJson.h>
+
 #include <SimpleRotary.h>
 #include <input/SimpleRotaryAdapter.h>
 
@@ -84,16 +86,26 @@ void taskOne( void * parameter )
  
 }
 
+void RP_calculate(){
+  double x_Buff = event.acceleration.x;
+  double y_Buff = event.acceleration.y;
+  double z_Buff = event.acceleration.z;
+  double roll = atan2(y_Buff , z_Buff) * 57.3;
+  double pitch = atan2((- x_Buff) , sqrt(y_Buff * y_Buff + z_Buff * z_Buff)) * 57.3;
+  printf("Roll: %f, Pitch: %f\n", roll, pitch);
+}
+
 void taskTwo( void * parameter)
 {
  
     while(true){
  
         accel.getEvent(&event);
-        Serial.print("X: "); Serial.print(event.acceleration.x); Serial.print("  ");
-        Serial.print("Y: "); Serial.print(event.acceleration.y); Serial.print("  ");
-        Serial.print("Z: "); Serial.print(event.acceleration.z); Serial.print("  ");
-        Serial.println("m/s^2 ");
+        //Serial.print("X: "); Serial.print(event.acceleration.x); Serial.print("  ");
+        //Serial.print("Y: "); Serial.print(event.acceleration.y); Serial.print("  ");
+        //Serial.print("Z: "); Serial.print(event.acceleration.z); Serial.print("  ");
+        //Serial.println("m/s^2 ");
+        RP_calculate();
         delay(500);
     }
 
@@ -104,9 +116,15 @@ void adxl345(sensors_event_t* event)
 //    accel.getEvent(&event);
 }
 
+void json_logger()
+{
+//    esp_timer_get_time()
+}
+
 void setup()
 {
     Serial.begin(9600);
+
 
 //    rtc.begin();
 
@@ -122,18 +140,7 @@ void setup()
         Serial.println("Cannot mount SD Card!");
     }
 
-    uint8_t cardType = SD.cardType();
-
-    Serial.print("SD Card Type: ");
-    if(cardType == CARD_MMC){
-        Serial.println("MMC");
-    } else if(cardType == CARD_SD){
-        Serial.println("SDSC");
-    } else if(cardType == CARD_SDHC){
-        Serial.println("SDHC");
-    } else {
-        Serial.println("UNKNOWN");
-    }
+    JsonDocument doc;
 
 /*    
     File file = SD.open("/");
@@ -143,7 +150,6 @@ void setup()
     }
 */
 
-    SD.mkdir("/lol");
 
     lcd.init();
     lcd.backlight();
