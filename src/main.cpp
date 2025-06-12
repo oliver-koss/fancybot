@@ -66,12 +66,22 @@ MENU_SCREEN(Dashboard, DashboardItems,
     ITEM_SUBMENU("Settings", settingsScreen));
 
 
+FILE *logfile;
+
 bool gps_enabled = false;
 bool adxl345_enabled = false;
 bool logging_enabled = false;
 bool rtc_enabled = false;
 bool display_enabled = false;
 
+
+int i2c_valid(byte address)
+{
+    Wire.beginTransmission(address);
+    int error = Wire.endTransmission();
+
+    return error;
+}
 
 void printl(char* string, int x, int y)
 {
@@ -87,14 +97,14 @@ void taskOne( void * parameter )
  
 //        Serial.println(esp_timer_get_time());
         test++;
-        delay(1000);
+        delay(100);
     }
  
 }
 
-void taskTwo( void * parameter)
+
+void adxl345(void* parameter)
 {
- 
     while(true){
  
         accel.getEvent(&event);
@@ -104,12 +114,6 @@ void taskTwo( void * parameter)
         Serial.println("m/s^2 ");
         delay(500);
     }
-
-}
-
-void adxl345(sensors_event_t* event)
-{
-//    accel.getEvent(&event);
 }
 
 void json_logger()
@@ -121,13 +125,27 @@ void setup()
 {
     Serial.begin(9600);
 
+    delay(2000);
+    Wire.begin();
+    int i2c = i2c_valid(0x27);
+    if (!i2c)
+    {
+        Serial.println("i2c device at 0x27 found");
+        display_enabled = true;
+    } else {
+        Serial.println("No i2c device found");
+    }
 
     delay(2000);
     if(!SD.begin(5)){
         Serial.println("Cannot mount SD Card!");
     } else {
         Serial.println("SD Card mounted.");
-        logging_enabled = true;
+        logfile = fopen("logs.json", "rw");
+        if (logfile != NULL)
+        {
+            logging_enabled = true;
+        }
     }
 
 /*    
@@ -156,7 +174,7 @@ void setup()
     if (accel.begin())
     {
         adxl345_enabled = true;
-//        xTaskCreate(adxl345, "adxl345", 10000, &event, 1, NULL);
+        xTaskCreate(adxl345, "adxl345", 10000, NULL, 1, NULL);
     }
 
   xTaskCreate(
@@ -167,15 +185,17 @@ void setup()
                     1,                /* Priority of the task. */
                     NULL);            /* Task handle. */
 
-  xTaskCreate(
-                    taskTwo,          /* Task function. */
-                    "TaskTwo",        /* String with name of task. */
-                    10000,            /* Stack size in bytes. */
-                    NULL,             /* Parameter passed as input of the task */
-                    1,                /* Priority of the task. */
-                    NULL);            /* Task handle. */
 
-                    
+//  xTaskCreate(
+//                    taskTwo,          /* Task function. */
+//                    "TaskTwo",        /* String with name of task. */
+//                    10000,            /* Stack size in bytes. */
+//                    NULL,             /* Parameter passed as input of the task */
+//                    1,                /* Priority of the task. */
+//                    NULL);            /* Task handle. */
+
+
+
 }
 
 
@@ -187,6 +207,4 @@ void loop()
         menu.poll();
     }
 
-    Serial.println("lul");
-    delay(1000);
 }
