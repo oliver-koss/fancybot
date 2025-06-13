@@ -66,7 +66,7 @@ MENU_SCREEN(Dashboard, DashboardItems,
     ITEM_SUBMENU("Settings", settingsScreen));
 
 
-FILE *logfile;
+File logfile;
 
 bool gps_enabled = false;
 bool adxl345_enabled = false;
@@ -113,6 +113,16 @@ void adxl345(void* parameter)
         Serial.print("Z: "); Serial.print(event.acceleration.z); Serial.print("  ");
         Serial.println("m/s^2 ");
         delay(500);
+
+        if (true)
+        {
+            logfile = SD.open("/logs.json");
+            logfile.print("X: ");
+            logfile.print(event.acceleration.x);
+            logfile.print("\n");
+            Serial.print("loggged");
+            logfile.close();
+        }
     }
 }
 
@@ -141,10 +151,13 @@ void setup()
         Serial.println("Cannot mount SD Card!");
     } else {
         Serial.println("SD Card mounted.");
-        logfile = fopen("logs.json", "rw");
-        if (logfile != NULL)
+        logfile = SD.open("/logs.json", FILE_WRITE);
+        if (SD.exists("/logs.json"))
         {
             logging_enabled = true;
+            logfile.println("lol");
+            Serial.println("logged");
+            logfile.close();
         }
     }
 
@@ -193,8 +206,6 @@ void setup()
 //                    NULL,             /* Parameter passed as input of the task */
 //                    1,                /* Priority of the task. */
 //                    NULL);            /* Task handle. */
-
-
 
 }
 
