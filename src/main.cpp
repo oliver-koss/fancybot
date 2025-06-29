@@ -108,18 +108,26 @@ void taskOne( void * parameter )
 
 void time(void* parameter)
 {
+    unsigned long millis_now = 0;
     while(true)
     {
-        DateTime now = rtc.now();
+        if((millis() - millis_now) > 10000)
+        {
+            DateTime now = rtc.now();
 
-        hour = now.hour();
-        minute = now.minute();
+            hour = now.hour();
+            minute = now.minute();
 
-        Serial.print(now.hour(), DEC);
-        Serial.print(':');
-        Serial.print(now.minute(), DEC);
-        Serial.print(':');
-        Serial.println(now.second(), DEC);
+            /*
+            Serial.print(now.hour(), DEC);
+            Serial.print(':');
+            Serial.print(now.minute(), DEC);
+            Serial.print(':');
+            Serial.println(now.second(), DEC);
+            */
+
+            millis_now = millis();
+        }
     }
 }
 
@@ -203,6 +211,7 @@ void setup()
     {
         rtc_enabled = true;
         rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+        xTaskCreate(time, "time", 10000, NULL, 1, NULL);
     }
 
     if (display_enabled)
