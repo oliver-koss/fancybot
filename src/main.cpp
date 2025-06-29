@@ -41,7 +41,8 @@ Adafruit_ADXL345_Unified accel = Adafruit_ADXL345_Unified();
 sensors_event_t event;
 
 int test = 1;
-
+int hour = 0;
+int minute = 0;
 
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 LiquidCrystal_I2CAdapter lcdAdapter(&lcd);
@@ -59,7 +60,7 @@ MENU_SCREEN(settingsScreen, settingsItems,
     ITEM_BASIC("Contrast2"));
 
 MENU_SCREEN(Dashboard, DashboardItems,
-    ITEM_VALUE("Test: ", test, "%i"),
+    ITEM_VALUE("Time: ", minute, "%i"),
     ITEM_VALUE("X: ", event.acceleration.x, "%f"),
     ITEM_VALUE("Y: ", event.acceleration.y, "%f"),
     ITEM_VALUE("Z: ", event.acceleration.z, "%f"),
@@ -68,12 +69,15 @@ MENU_SCREEN(Dashboard, DashboardItems,
 
 File logfile;
 
+RTC_DS1307 rtc;
+
+HardwareSerial gpsSerial(2);
+
 bool gps_enabled = false;
 bool adxl345_enabled = false;
 bool logging_enabled = false;
 bool rtc_enabled = false;
 bool display_enabled = false;
-
 
 int i2c_valid(byte address)
 {
@@ -102,6 +106,31 @@ void taskOne( void * parameter )
  
 }
 
+void time(void* parameter)
+{
+    while(true)
+    {
+        DateTime now = rtc.now();
+
+        hour = now.hour();
+        minute = now.minute();
+
+        Serial.print(now.hour(), DEC);
+        Serial.print(':');
+        Serial.print(now.minute(), DEC);
+        Serial.print(':');
+        Serial.println(now.second(), DEC);
+    }
+}
+
+void lcd_menu(void* parameter)
+{
+    while(true)
+    {
+        encoderA.observe();
+        menu.poll();
+    }
+}
 
 void adxl345(void* parameter)
 {
@@ -114,7 +143,7 @@ void adxl345(void* parameter)
         Serial.println("m/s^2 ");
         delay(500);
 
-        if (true)
+        if (logging_enabled)
         {
             logfile = SD.open("/logs.json");
             logfile.print("X: ");
@@ -134,6 +163,7 @@ void json_logger()
 void setup()
 {
     Serial.begin(9600);
+    gpsSerial.begin(9600, SERIAL_8N1, 26, 25);
 
     delay(2000);
     Wire.begin();
@@ -169,6 +199,11 @@ void setup()
     }
 */
 
+    if (rtc.begin())
+    {
+        rtc_enabled = true;
+        rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+    }
 
     if (display_enabled)
     {
@@ -180,6 +215,8 @@ void setup()
 
         printl("FancyBot", 0, 0);
         printl("Version 0.0.1", 0, 1);
+
+        xTaskCreate(lcd_menu, "lcd_menu", 10000, NULL, 1, NULL);
     }
 
 
@@ -212,10 +249,14 @@ void setup()
 
 void loop()
 {
+    /*
     if (display_enabled)
     {
         encoderA.observe();
         menu.poll();
     }
+    */
 
+    delay(1000);
+    Serial.print("lol");
 }
