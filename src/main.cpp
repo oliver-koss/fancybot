@@ -163,7 +163,7 @@ void json_logger()
 void setup()
 {
     Serial.begin(9600);
-    gpsSerial.begin(9600, SERIAL_8N1, 26, 25);
+    gpsSerial.begin(9600, SERIAL_8N1, 33, 25);
 
     delay(2000);
     Wire.begin();
