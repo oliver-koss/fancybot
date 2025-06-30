@@ -9,6 +9,8 @@
 #include <Adafruit_Sensor.h> 
 #include <Adafruit_ADXL345_U.h>
 
+#include <TinyGPS++.h>
+
 #include "FS.h"
 #include "SD.h"
 #include "SPI.h"
@@ -50,6 +52,12 @@ CharacterDisplayRenderer renderer(&lcdAdapter, 16, 2);
 LcdMenu menu(renderer);
 SimpleRotaryAdapter encoderA(&menu, &encoder);
 
+bool gps_enabled = false;
+bool adxl345_enabled = false;
+bool logging_enabled = false;
+bool rtc_enabled = false;
+bool rtc_set = false;
+bool display_enabled = false;
 
 MENU_SCREEN(settingsScreen, settingsItems,
     ITEM_WIDGET(
@@ -60,7 +68,7 @@ MENU_SCREEN(settingsScreen, settingsItems,
     ITEM_BASIC("Contrast2"));
 
 MENU_SCREEN(Dashboard, DashboardItems,
-    ITEM_VALUE("Time: ", minute, "%i"),
+    ITEM_VALUE("Time: ", rtc_enabled, "%i"),
     ITEM_VALUE("X: ", event.acceleration.x, "%f"),
     ITEM_VALUE("Y: ", event.acceleration.y, "%f"),
     ITEM_VALUE("Z: ", event.acceleration.z, "%f"),
@@ -70,14 +78,9 @@ MENU_SCREEN(Dashboard, DashboardItems,
 File logfile;
 
 RTC_DS1307 rtc;
+TinyGPSPlus gps;
 
 HardwareSerial gpsSerial(2);
-
-bool gps_enabled = false;
-bool adxl345_enabled = false;
-bool logging_enabled = false;
-bool rtc_enabled = false;
-bool display_enabled = false;
 
 int i2c_valid(byte address)
 {
@@ -104,6 +107,22 @@ void taskOne( void * parameter )
         delay(100);
     }
  
+}
+
+void gps_task(void* parameter)
+{
+    while(true)
+    {
+        gps.encode(gpsSerial.read());
+        if (gps.time.isValid() && !rtc_set && rtc_enabled)
+        {
+            DateTime dt(gps.date.year(), gps.date.month(), gps.date.day(), gps.time.hour(), gps.time.minute(), gps.time.second());
+            rtc.adjust(dt);
+         //   rtc.adjust(gps.time.second(), gps.time.minute(), gps.time.hour(), gps.date.day(), gps.date.month(), gps.date.year());
+            rtc_set = true;
+            Serial.print("Time set!");
+        }
+    }
 }
 
 void time(void* parameter)
@@ -211,7 +230,7 @@ void setup()
     {
         rtc_enabled = true;
         rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
-        xTaskCreate(time, "time", 10000, NULL, 1, NULL);
+//        xTaskCreate(time, "time", 10000, NULL, 1, NULL);
     }
 
     if (display_enabled)
@@ -266,6 +285,13 @@ void loop()
     }
     */
 
-    delay(1000);
-    Serial.print("lol");
+/*
+  while (gpsSerial.available() > 0){
+    // get the byte data from the GPS
+    char gpsData = gpsSerial.read();
+    Serial.print(gpsData);
+  }
+  delay(1000);
+  Serial.println("-------------------------------");
+  */
 }
