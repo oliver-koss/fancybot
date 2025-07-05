@@ -69,7 +69,7 @@ typedef struct log_event_struct_ {
 } log_event_struct;
 
 std::mutex log_event_lock;
-std::queue<log_event_struct*> log_events;
+std::queue<log_event_struct> log_events;
 
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 LiquidCrystal_I2CAdapter lcdAdapter(&lcd);
@@ -121,6 +121,14 @@ void printl(char* string, int x, int y)
     lcd.print(string);
 }
 
+void log_event(char* type, char* sensor, bool status)
+{
+    log_event_struct buffer = {type, sensor, status};
+
+    log_event_lock.lock();
+    log_events.push(buffer);
+    log_event_lock.unlock();
+}
 
 void taskOne( void * parameter )
 {
@@ -145,9 +153,11 @@ void gps_task(void* parameter)
             rtc.adjust(dt);
          //   rtc.adjust(gps.time.second(), gps.time.minute(), gps.time.hour(), gps.date.day(), gps.date.month(), gps.date.year());
             rtc_set = true;
-            Serial.print("Time set!");
+            log_event("hardware", "rtc_set", 1);
+//            Serial.print("Time set!");
         }
         delay(1000);
+//        log_event("test", "test_logging", 1);
     }
 }
 
@@ -203,22 +213,6 @@ void lcd_menu(void* parameter)
         encoderA.observe();
         menu.poll();
     }
-}
-
-void log_event(log_event_struct* log)
-{
-    JsonDocument doc;
-
-    doc["type"] = log->type;
-    doc[log->sensor] = log->status;
-
-    serializeJson(doc, logfile);
-    serializeJson(doc, Serial);
-
-    logfile.print("\r\n");
-    Serial.println();
-
-    logfile.close();    
 }
 
 void adxl345(void* parameter)
@@ -279,8 +273,6 @@ void json_logger(void* parameter)
         gps_data.add(gps.location.lng());
         gps_data.add(gps.location.lat());
 
-        Serial.println(gps.location.lng(), 6);
-
         serializeJson(doc, logfile);
         serializeJson(doc, Serial);
         Serial.println();
@@ -288,18 +280,15 @@ void json_logger(void* parameter)
 
         logfile.print("\r\n");
 
-        Serial.println("Debugg1");
         log_event_lock.lock();
         if (log_events.size() > 0)
         {
-            Serial.println("Vector not empty!");
-
-            log_event_struct* buffer = log_events.front();
+            log_event_struct buffer = log_events.front();
 
             JsonDocument event;
 
-            event["type"] = buffer->type;
-            event[buffer->sensor] = buffer->status;
+            event["type"] = buffer.type;
+            event[buffer.sensor] = buffer.status;
 
             serializeJson(event, logfile);
             serializeJson(event, Serial);
@@ -311,9 +300,8 @@ void json_logger(void* parameter)
             log_events.pop();
 
         }
-        Serial.println("Debugg2");
+
         log_event_lock.unlock();
-        Serial.println("Debugg3");
 
         logfile.flush();
 
