@@ -31,6 +31,9 @@
 #include <widget/WidgetRange.h>
 #include <ItemValue.h>
 
+#include <mutex>
+#include <queue>
+
 #define ROTARY_ENCODER_DT_PIN 27
 #define ROTARY_ENCODER_CLK_PIN 26
 #define ROTARY_ENCODER_BUTTON_PIN 14
@@ -58,6 +61,15 @@ int minute = 0;
 
 char* current_time;
 //char* time_string;
+
+typedef struct log_event_struct_ {
+    char* type;
+    char* sensor;
+    bool status;
+} log_event_struct;
+
+std::mutex log_event_lock;
+std::queue<log_event_struct*> log_events;
 
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 LiquidCrystal_I2CAdapter lcdAdapter(&lcd);
@@ -193,12 +205,12 @@ void lcd_menu(void* parameter)
     }
 }
 
-void log_event(char* type, char* sensor, bool status)
+void log_event(log_event_struct* log)
 {
     JsonDocument doc;
 
-    doc["type"] = type;
-    doc[sensor] = status;
+    doc["type"] = log->type;
+    doc[log->sensor] = log->status;
 
     serializeJson(doc, logfile);
     serializeJson(doc, Serial);
@@ -251,6 +263,9 @@ void adxl345(void* parameter)
 
 void json_logger(void* parameter)
 {
+
+    logfile = SD.open("/logs.json", FILE_APPEND);
+
     while (true)
     {
         JsonDocument doc;
@@ -266,9 +281,6 @@ void json_logger(void* parameter)
 
         Serial.println(gps.location.lng(), 6);
 
-
-        logfile = SD.open("/logs.json", FILE_APPEND);
-
         serializeJson(doc, logfile);
         serializeJson(doc, Serial);
         Serial.println();
@@ -276,7 +288,34 @@ void json_logger(void* parameter)
 
         logfile.print("\r\n");
 
-        logfile.close();
+        Serial.println("Debugg1");
+        log_event_lock.lock();
+        if (log_events.size() > 0)
+        {
+            Serial.println("Vector not empty!");
+
+            log_event_struct* buffer = log_events.front();
+
+            JsonDocument event;
+
+            event["type"] = buffer->type;
+            event[buffer->sensor] = buffer->status;
+
+            serializeJson(event, logfile);
+            serializeJson(event, Serial);
+
+            logfile.print("\r\n");
+            Serial.println();
+            
+
+            log_events.pop();
+
+        }
+        Serial.println("Debugg2");
+        log_event_lock.unlock();
+        Serial.println("Debugg3");
+
+        logfile.flush();
 
         delay(500);
     }
@@ -379,7 +418,7 @@ void setup()
 
             logfile.close();
 
-            log_event("hardware", "logging", 1);
+//            log_event("hardware", "logging", 1);
 
             xTaskCreate(json_logger, "json_logger", 10000, NULL, 1, NULL);
         }
