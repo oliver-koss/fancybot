@@ -36,6 +36,16 @@
 #define ROTARY_ENCODER_BUTTON_PIN 14
 #define ROTARY_ENCODER_STEPS 4
 
+#define FANCYBOT \
+"  _____                            ___.              \r\n" \
+"_/ ____\\____    ____   ____ ___..\\_ |   _____/  |_ \r\n" \
+"\\   __\\\\  \\  /    \\_/ ___<   |  | |  \\ /  _ \\   __\\\r\n" \
+" |  |   /  \\|   |  \\  \\___\\___  | | \\_\\ (  <_> )  |  \r\n" \
+" ||  (____  /___|  /\\___  > ____| |___  /\\____/||  \r\n" \
+"            \\/     \\/     \\/\\/          \\/            \r\n" \
+"(This is why I dont use AI for anything)\r\n\n\n"
+
+
 SimpleRotary encoder(ROTARY_ENCODER_DT_PIN, ROTARY_ENCODER_CLK_PIN, ROTARY_ENCODER_BUTTON_PIN);
 
 
@@ -45,6 +55,9 @@ sensors_event_t event;
 int test = 1;
 int hour = 0;
 int minute = 0;
+
+char* current_time;
+//char* time_string;
 
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 LiquidCrystal_I2CAdapter lcdAdapter(&lcd);
@@ -68,7 +81,7 @@ MENU_SCREEN(settingsScreen, settingsItems,
     ITEM_BASIC("Contrast2"));
 
 MENU_SCREEN(Dashboard, DashboardItems,
-    ITEM_VALUE("Time: ", rtc_enabled, "%i"),
+    ITEM_VALUE("Time", current_time, "%s"),
     ITEM_VALUE("X: ", event.acceleration.x, "%f"),
     ITEM_VALUE("Y: ", event.acceleration.y, "%f"),
     ITEM_VALUE("Z: ", event.acceleration.z, "%f"),
@@ -122,6 +135,7 @@ void gps_task(void* parameter)
             rtc_set = true;
             Serial.print("Time set!");
         }
+        delay(1000);
     }
 }
 
@@ -130,12 +144,30 @@ void time(void* parameter)
     unsigned long millis_now = 0;
     while(true)
     {
-        if((millis() - millis_now) > 10000)
+//        if((millis() - millis_now) > 10000)
+        if(true)
         {
             DateTime now = rtc.now();
 
-            hour = now.hour();
-            minute = now.minute();
+//            hour = now.hour();
+//            minute = now.minute();
+
+//            char* timee_string = now.toString("hh:mm:ss");
+            char buffer[] = "hh:mm:ss";
+            current_time = now.toString(buffer);
+
+            /*
+            Serial.print(current_time);
+            if (rtc_set)
+            {
+                Serial.println("!");
+            } else {
+                Serial.println();
+            }
+            */
+
+//            Serial.print("Time: ");
+//            Serial.println(time_string);
 
             /*
             Serial.print(now.hour(), DEC);
@@ -145,7 +177,9 @@ void time(void* parameter)
             Serial.println(now.second(), DEC);
             */
 
-            millis_now = millis();
+//            millis_now = millis();
+
+            delay(500);
         }
     }
 }
@@ -159,32 +193,93 @@ void lcd_menu(void* parameter)
     }
 }
 
+void log_event(char* type, char* sensor, bool status)
+{
+    JsonDocument doc;
+
+    doc["type"] = type;
+    doc[sensor] = status;
+
+    serializeJson(doc, logfile);
+    serializeJson(doc, Serial);
+
+    logfile.print("\r\n");
+    Serial.println();
+
+    logfile.close();    
+}
+
 void adxl345(void* parameter)
 {
     while(true){
  
         accel.getEvent(&event);
-        Serial.print("X: "); Serial.print(event.acceleration.x); Serial.print("  ");
-        Serial.print("Y: "); Serial.print(event.acceleration.y); Serial.print("  ");
-        Serial.print("Z: "); Serial.print(event.acceleration.z); Serial.print("  ");
-        Serial.println("m/s^2 ");
-        delay(500);
+//        Serial.print("X: "); Serial.print(event.acceleration.x); Serial.print("  ");
+//        Serial.print("Y: "); Serial.print(event.acceleration.y); Serial.print("  ");
+//        Serial.print("Z: "); Serial.print(event.acceleration.z); Serial.print("  ");
+//        Serial.println("m/s^2 ");
 
         if (logging_enabled)
         {
-            logfile = SD.open("/logs.json");
-            logfile.print("X: ");
-            logfile.print(event.acceleration.x);
-            logfile.print("\n");
-            Serial.print("loggged");
+            /*
+            JsonDocument doc;
+
+            doc["type"] = "stats";
+            doc["time"] = current_time;
+            doc["millis"] = esp_timer_get_time();
+            doc["x"] = event.acceleration.x;
+            doc["y"] = event.acceleration.y;
+            doc["z"] = event.acceleration.z;
+
+
+            logfile = SD.open("/logs.json", FILE_APPEND);
+
+            serializeJson(doc, logfile);
+            serializeJson(doc, Serial);
+            Serial.println();
+
+//            logfile.print("X: ");
+//            logfile.print(event.acceleration.x);
+            logfile.print("\r\n");
+//            Serial.print("logged");
             logfile.close();
+            */
         }
+        delay(500);
     }
 }
 
-void json_logger()
+void json_logger(void* parameter)
 {
-//    esp_timer_get_time()
+    while (true)
+    {
+        JsonDocument doc;
+
+        doc["type"] = "stats";
+        doc["time"] = current_time;
+        doc["millis"] = esp_timer_get_time();
+
+        JsonArray gps_data = doc["gps"].to<JsonArray>();
+
+        gps_data.add(gps.location.lng());
+        gps_data.add(gps.location.lat());
+
+        Serial.println(gps.location.lng(), 6);
+
+
+        logfile = SD.open("/logs.json", FILE_APPEND);
+
+        serializeJson(doc, logfile);
+        serializeJson(doc, Serial);
+        Serial.println();
+
+
+        logfile.print("\r\n");
+
+        logfile.close();
+
+        delay(500);
+    }
 }
 
 void setup()
@@ -192,7 +287,6 @@ void setup()
     Serial.begin(9600);
     gpsSerial.begin(9600, SERIAL_8N1, 33, 25);
 
-    delay(2000);
     Wire.begin();
     int i2c = i2c_valid(0x27);
     if (!i2c)
@@ -201,21 +295,6 @@ void setup()
         display_enabled = true;
     } else {
         Serial.println("No i2c device found");
-    }
-
-    delay(2000);
-    if(!SD.begin(5)){
-        Serial.println("Cannot mount SD Card!");
-    } else {
-        Serial.println("SD Card mounted.");
-        logfile = SD.open("/logs.json", FILE_WRITE);
-        if (SD.exists("/logs.json"))
-        {
-            logging_enabled = true;
-            logfile.println("lol");
-            Serial.println("logged");
-            logfile.close();
-        }
     }
 
 /*    
@@ -229,8 +308,8 @@ void setup()
     if (rtc.begin())
     {
         rtc_enabled = true;
-        rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
-//        xTaskCreate(time, "time", 10000, NULL, 1, NULL);
+//        rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+        xTaskCreate(time, "time", 10000, NULL, 1, NULL);
     }
 
     if (display_enabled)
@@ -255,6 +334,8 @@ void setup()
         xTaskCreate(adxl345, "adxl345", 10000, NULL, 1, NULL);
     }
 
+    xTaskCreate(gps_task, "gps_task", 10000, NULL, 1, NULL);
+
   xTaskCreate(
                     taskOne,          /* Task function. */
                     "TaskOne",        /* String with name of task. */
@@ -271,6 +352,38 @@ void setup()
 //                    NULL,             /* Parameter passed as input of the task */
 //                    1,                /* Priority of the task. */
 //                    NULL);            /* Task handle. */
+
+    if(!SD.begin(5)){
+        Serial.println("Cannot mount SD Card!");
+    } else {
+        Serial.println("SD Card mounted.");
+        logfile = SD.open("/logs.json", FILE_APPEND);
+        if (SD.exists("/logs.json"))
+        {
+            logging_enabled = true;
+            Serial.print(FANCYBOT);
+
+            JsonDocument doc;
+
+            doc["type"] = "boot";
+            doc["gps"] = gps_enabled;
+            doc["adxl345"] = adxl345_enabled;
+            doc["rtc"] = rtc_enabled;
+            doc["display"] = display_enabled;
+
+            serializeJson(doc, logfile);
+            serializeJson(doc, Serial);
+
+            logfile.print("\r\n");
+            Serial.println();
+
+            logfile.close();
+
+            log_event("hardware", "logging", 1);
+
+            xTaskCreate(json_logger, "json_logger", 10000, NULL, 1, NULL);
+        }
+    }
 
 }
 
