@@ -36,7 +36,7 @@
 
 #define ROTARY_ENCODER_DT_PIN 27
 #define ROTARY_ENCODER_CLK_PIN 26
-#define ROTARY_ENCODER_BUTTON_PIN 14
+#define ROTARY_ENCODER_BUTTON_PIN 32
 #define ROTARY_ENCODER_STEPS 4
 
 #define FANCYBOT \
@@ -53,6 +53,8 @@ SimpleRotary encoder(ROTARY_ENCODER_DT_PIN, ROTARY_ENCODER_CLK_PIN, ROTARY_ENCOD
 
 
 Adafruit_ADXL345_Unified accel = Adafruit_ADXL345_Unified();
+
+std::mutex adxl_lock;
 sensors_event_t event;
 
 int test = 1;
@@ -77,7 +79,7 @@ CharacterDisplayRenderer renderer(&lcdAdapter, 16, 2);
 LcdMenu menu(renderer);
 SimpleRotaryAdapter encoderA(&menu, &encoder);
 
-bool gps_enabled = false;
+bool gps_enabled = true;
 bool adxl345_enabled = false;
 bool logging_enabled = false;
 bool rtc_enabled = false;
@@ -101,6 +103,9 @@ MENU_SCREEN(Dashboard, DashboardItems,
 
 
 File logfile;
+
+std::mutex rtc_lock;
+std::mutex gps_lock;
 
 RTC_DS1307 rtc;
 TinyGPSPlus gps;
@@ -146,7 +151,34 @@ void gps_task(void* parameter)
 {
     while(true)
     {
-        gps.encode(gpsSerial.read());
+        gps_lock.lock();
+//        gps.encode(gpsSerial.read());
+
+        while (gpsSerial.available() > 0){
+            // get the byte data from the GPS
+            gps.encode(gpsSerial.read());
+        }
+
+        /*
+        while (gpsSerial.available() > 0){
+            // get the byte data from the GPS
+            char gpsData = gpsSerial.read();
+            Serial.print(gpsData);
+        }
+        */
+
+        if(gps.time.age() > 1500 && gps_enabled)
+        {
+            log_event("hardware", "gps_working", 0);
+            gps_enabled = false;
+        }
+
+        if(gps.time.age() < 1500 && !gps_enabled)
+        {
+            log_event("hardware", "gps_working", 1);
+            gps_enabled = true;
+        }
+
         if (gps.time.isValid() && !rtc_set && rtc_enabled)
         {
             DateTime dt(gps.date.year(), gps.date.month(), gps.date.day(), gps.time.hour(), gps.time.minute(), gps.time.second());
@@ -156,7 +188,9 @@ void gps_task(void* parameter)
             log_event("hardware", "rtc_set", 1);
 //            Serial.print("Time set!");
         }
-        delay(1000);
+        gps_lock.unlock();
+
+        delay(500);
 //        log_event("test", "test_logging", 1);
     }
 }
@@ -219,7 +253,9 @@ void adxl345(void* parameter)
 {
     while(true){
  
+        adxl_lock.lock();
         accel.getEvent(&event);
+        adxl_lock.unlock();
 //        Serial.print("X: "); Serial.print(event.acceleration.x); Serial.print("  ");
 //        Serial.print("Y: "); Serial.print(event.acceleration.y); Serial.print("  ");
 //        Serial.print("Z: "); Serial.print(event.acceleration.z); Serial.print("  ");
@@ -258,30 +294,14 @@ void adxl345(void* parameter)
 void json_logger(void* parameter)
 {
 
+//    unsigned long millis_now = millis();  //For debugging
+
     logfile = SD.open("/logs.json", FILE_APPEND);
 
     while (true)
     {
-        JsonDocument doc;
-
-        doc["type"] = "stats";
-        doc["time"] = current_time;
-        doc["millis"] = esp_timer_get_time();
-
-        JsonArray gps_data = doc["gps"].to<JsonArray>();
-
-        gps_data.add(gps.location.lng());
-        gps_data.add(gps.location.lat());
-
-        serializeJson(doc, logfile);
-        serializeJson(doc, Serial);
-        Serial.println();
-
-
-        logfile.print("\r\n");
-
         log_event_lock.lock();
-        if (log_events.size() > 0)
+        while (log_events.size() > 0)
         {
             log_event_struct buffer = log_events.front();
 
@@ -300,11 +320,47 @@ void json_logger(void* parameter)
             log_events.pop();
 
         }
-
         log_event_lock.unlock();
+
+
+        JsonDocument doc;
+
+        doc["type"] = "stats";
+        doc["time"] = current_time;
+        doc["millis"] = esp_timer_get_time();
+
+        if(gps_enabled)
+        {
+            JsonArray gps_data = doc["gps"].to<JsonArray>();
+
+            gps_data.add(gps.location.lng());
+            gps_data.add(gps.location.lat());
+        }
+
+        if(adxl345_enabled)
+        {
+            JsonArray adxl_data = doc["adxl345"].to<JsonArray>();
+
+            adxl_lock.lock();
+            adxl_data.add(event.acceleration.x);
+            adxl_data.add(event.acceleration.y);
+            adxl_data.add(event.acceleration.z);
+            adxl_lock.unlock();
+        }
+        serializeJson(doc, logfile);
+        serializeJson(doc, Serial);
+        Serial.println();
+
+
+        logfile.print("\r\n");
 
         logfile.flush();
 
+        /*
+        Serial.print("Took ");
+        Serial.print((millis() - millis_now));
+        Serial.println(" ms");
+        */
         delay(500);
     }
 }
