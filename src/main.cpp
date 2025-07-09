@@ -245,7 +245,17 @@ void lcd_menu(void* parameter)
     while(true)
     {
         encoderA.observe();
+    }
+}
+
+void lcd_menu_poll(void* parameter)
+{
+    while(true)
+    {
+        adxl_lock.lock();
         menu.poll();
+        adxl_lock.unlock();
+        delay(500);
     }
 }
 
@@ -406,7 +416,8 @@ void setup()
         printl("FancyBot", 0, 0);
         printl("Version 0.0.1", 0, 1);
 
-        xTaskCreate(lcd_menu, "lcd_menu", 10000, NULL, 1, NULL);
+//        xTaskCreate(lcd_menu, "lcd_menu", 10000, NULL, 1, NULL);
+        xTaskCreate(lcd_menu_poll, "lcd_menu_poll", 10000, NULL, 1, NULL);
     }
 
 
@@ -490,4 +501,5 @@ void loop()
   delay(1000);
   Serial.println("-------------------------------");
   */
+    encoderA.observe();
 }
