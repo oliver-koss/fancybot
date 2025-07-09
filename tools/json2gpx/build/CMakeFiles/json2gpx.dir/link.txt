@@ -1,1 +1,0 @@
-/sbin/cc  -pthread -lm -lcjson -Wl,--dependency-file=CMakeFiles/json2gpx.dir/link.d CMakeFiles/json2gpx.dir/json2gpx.c.o -o json2gpx

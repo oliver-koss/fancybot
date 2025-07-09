@@ -1,7 +1,0 @@
-{
-	"InstallScripts" : 
-	[
-		"/home/oliver/git/fancybot/tools/json2gpx/build/cmake_install.cmake"
-	],
-	"Parallel" : false
-}
