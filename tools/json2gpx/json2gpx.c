@@ -81,12 +81,12 @@ int main(int argc, char* argv[])
         cJSON_ArrayForEach(location, location_array) {
             if (count == 0)
             {
-                sprintf(lat, "%f", location->valuedouble);
-//                printf("Lon: %s\n", lat);
+                sprintf(lon, "%f", location->valuedouble);
+//                printf("Lon: %s\n", lon);
                 count++;
             } else {
-                sprintf(lon, "%f", location->valuedouble);
-//                printf("Lat: %s\n", lon);
+                sprintf(lat, "%f", location->valuedouble);
+//                printf("Lat: %s\n", lat);
             }
 
             if (location->valuedouble == 0)             // !!!
@@ -97,7 +97,7 @@ int main(int argc, char* argv[])
         }
 
         if(!error) {
-            write_trackpoint(lon, lat);
+            write_trackpoint(lat, lon);
         }
 
 //        printf("%s\n", buffer);
