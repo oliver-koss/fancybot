@@ -1,0 +1,3 @@
+/home/oliver/git/fancybot/tools/json2gpx/build/CMakeFiles/json2gpx.dir
+/home/oliver/git/fancybot/tools/json2gpx/build/CMakeFiles/edit_cache.dir
+/home/oliver/git/fancybot/tools/json2gpx/build/CMakeFiles/rebuild_cache.dir

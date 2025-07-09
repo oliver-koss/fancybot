@@ -1,0 +1,1 @@
+/sbin/cc  -pthread -lm -Wl,--dependency-file=CMakeFiles/executable.dir/link.d CMakeFiles/executable.dir/json2gpx.c.o -o executable
