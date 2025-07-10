@@ -6,6 +6,3 @@ The only required parameter is the path of the log.
 Example:
         ./json2gpx ./logs.json
 
-
-
-!!! The tool does not work yet !!!
