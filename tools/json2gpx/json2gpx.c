@@ -19,13 +19,17 @@ void write_metadata(char* data_name, char* description, char* author_name)
     fprintf(gpxf, "</name>\n  </author>\n </metadata>\n");
 }
 
-void write_trackpoint(char* lat, char* lon)
+void write_trackpoint(char* lat, char* lon, char* time)
 {
     fprintf(gpxf, "  <trkpt lat=\"");
     fprintf(gpxf, lat);
     fprintf(gpxf, "\" lon=\"");
     fprintf(gpxf, lon);
-    fprintf(gpxf, "\">\n  </trkpt>\n");
+    fprintf(gpxf, "\">\n");
+    fprintf(gpxf, "   <time>");
+    fprintf(gpxf, time);
+    fprintf(gpxf, "</time>\n");
+    fprintf(gpxf, "  </trkpt>\n");
 }
 
 int main(int argc, char* argv[])
@@ -97,7 +101,7 @@ int main(int argc, char* argv[])
         }
 
         if(!error) {
-            write_trackpoint(lat, lon);
+            write_trackpoint(lat, lon, "T23:59:59Z");
         }
 
 //        printf("%s\n", buffer);
