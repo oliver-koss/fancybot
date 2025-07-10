@@ -80,6 +80,7 @@ LcdMenu menu(renderer);
 SimpleRotaryAdapter encoderA(&menu, &encoder);
 
 bool gps_enabled = true;
+bool gps_location_valid = false;
 bool adxl345_enabled = false;
 bool logging_enabled = false;
 bool rtc_enabled = false;
@@ -177,6 +178,16 @@ void gps_task(void* parameter)
         {
             log_event("hardware", "gps_working", 1);
             gps_enabled = true;
+        }
+
+        if(gps_enabled && gps.location.isValid())
+        {
+            log_event("hardware", "gps_location_valid", 1);
+            gps_location_valid = true;
+        }
+        if(gps_location_valid && !gps.location.isValid()){
+            log_event("hardware", "gps_location_valid", 0);
+            gps_location_valid = false;
         }
 
         if (gps.time.isValid() && !rtc_set && rtc_enabled)
@@ -339,7 +350,7 @@ void json_logger(void* parameter)
         doc["time"] = current_time;
         doc["millis"] = esp_timer_get_time();
 
-        if(gps_enabled)
+        if(gps_location_valid)
         {
             JsonArray gps_data = doc["gps"].to<JsonArray>();
 
