@@ -180,7 +180,7 @@ void gps_task(void* parameter)
             gps_enabled = true;
         }
 
-        if(gps_enabled && gps.location.isValid())
+        if(gps_enabled && !gps_location_valid && gps.location.isValid())
         {
             log_event("hardware", "gps_location_valid", 1);
             gps_location_valid = true;
@@ -350,7 +350,7 @@ void json_logger(void* parameter)
         doc["time"] = current_time;
         doc["millis"] = esp_timer_get_time();
 
-        if(gps_location_valid)
+        if(gps_location_valid && gps_enabled)
         {
             JsonArray gps_data = doc["gps"].to<JsonArray>();
 
