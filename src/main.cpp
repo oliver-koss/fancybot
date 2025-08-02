@@ -1,5 +1,12 @@
 #include "Arduino.h"
 
+#include "ESP32Console.h"
+#include <WiFi.h>
+#include "ESP32Console/Helpers/PWDHelpers.h"
+
+#include "ESP-FTP-Server-Lib.h"
+#include "FTPFilesystem.h"
+
 //#include "AiEsp32RotaryEncoder.h"
 //#include <LiquidCrystal_I2C.h>
 //#include <TinyGPSPlus.h>
@@ -57,6 +64,14 @@ Adafruit_ADXL345_Unified accel = Adafruit_ADXL345_Unified();
 std::mutex adxl_lock;
 sensors_event_t event;
 
+using namespace ESP32Console;
+Console console;
+
+FTPServer ftp;
+
+const char *ssid = "Pixel_9627";
+const char *password = "sunshinedoener";
+
 int test = 1;
 int hour = 0;
 int minute = 0;
@@ -86,6 +101,8 @@ bool logging_enabled = false;
 bool rtc_enabled = false;
 bool rtc_set = false;
 bool display_enabled = false;
+bool ftp_enabled = true;
+bool debugg_mode = true;
 
 MENU_SCREEN(settingsScreen, settingsItems,
     ITEM_WIDGET(
@@ -332,10 +349,10 @@ void json_logger(void* parameter)
             event[buffer.sensor] = buffer.status;
 
             serializeJson(event, logfile);
-            serializeJson(event, Serial);
+    //        serializeJson(event, Serial);
 
             logfile.print("\r\n");
-            Serial.println();
+//            Serial.println();
             
 
             log_events.pop();
@@ -369,9 +386,14 @@ void json_logger(void* parameter)
             adxl_lock.unlock();
         }
         serializeJson(doc, logfile);
-        serializeJson(doc, Serial);
-        Serial.println();
 
+        /*
+        if (debugg_mode)
+        {
+            serializeJson(doc, Serial);
+            Serial.println();
+        }
+        */
 
         logfile.print("\r\n");
 
@@ -386,10 +408,31 @@ void json_logger(void* parameter)
     }
 }
 
+int print_hello(int argc, char **argv)
+{
+    printf("Hallo");
+    return 0;
+}
+
+void ftp_server(void* parameter)
+{
+    while(true)
+    {
+        ftp.handle();
+    }
+}
+
 void setup()
 {
-    Serial.begin(9600);
+    WiFi.begin(ssid, password);
+    console.setPrompt("FancyBot> ");
+//    Serial.begin(9600);
+    console.begin(115200);
     gpsSerial.begin(9600, SERIAL_8N1, 33, 25);
+
+    console.registerSystemCommands();
+    console.registerNetworkCommands();
+//    console.registerCommand(ConsoleCommand("hello", &print_hello, "Print hello"));
 
     Wire.begin();
     int i2c = i2c_valid(0x27);
@@ -488,6 +531,14 @@ void setup()
 
             xTaskCreate(json_logger, "json_logger", 10000, NULL, 1, NULL);
         }
+    }
+
+    if (ftp_enabled)
+    {
+        ftp.addUser("esp32", "esp32");
+        ftp.addFilesystem("SD", &SD);
+        ftp.begin();
+        xTaskCreate(ftp_server, "ftp_server", 10000, NULL, 1, NULL);
     }
 
 }
