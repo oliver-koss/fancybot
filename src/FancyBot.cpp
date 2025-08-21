@@ -41,10 +41,8 @@
 #include <mutex>
 #include <queue>
 
-#define ROTARY_ENCODER_DT_PIN 27
-#define ROTARY_ENCODER_CLK_PIN 26
-#define ROTARY_ENCODER_BUTTON_PIN 32
-#define ROTARY_ENCODER_STEPS 4
+#include "pinout.h"
+#include "print_test.h"
 
 #define FANCYBOT \
 "  _____                            ___.              \r\n" \
@@ -426,12 +424,12 @@ void setup()
 {
     WiFi.begin(ssid, password);
     console.setPrompt("FancyBot> ");
-//    Serial.begin(9600);
-    console.begin(115200);
-    gpsSerial.begin(9600, SERIAL_8N1, 33, 25);
+    Serial.begin(115200);
+//    console.begin(115200);
+    gpsSerial.begin(GPS_BAUDRATE, SERIAL_8N1, GPS_RX, GPS_TX);
 
-    console.registerSystemCommands();
-    console.registerNetworkCommands();
+//    console.registerSystemCommands();
+//    console.registerNetworkCommands();
 //    console.registerCommand(ConsoleCommand("hello", &print_hello, "Print hello"));
 
     Wire.begin();
@@ -564,4 +562,7 @@ void loop()
   Serial.println("-------------------------------");
   */
     encoderA.observe();
+    
+//    delay(500);
+//    Test::print();
 }
