@@ -68,7 +68,7 @@ Console console;
 FTPServer ftp;
 
 const char *ssid = "Pixel_9627";
-const char *password = "sunshinedoener";
+const char *password = "";
 
 int test = 1;
 int hour = 0;
